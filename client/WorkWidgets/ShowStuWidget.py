@@ -1,57 +1,50 @@
 from PyQt6 import QtWidgets, QtGui, QtCore
 from WorkWidgets.WidgetComponents import LabelComponent, ButtonComponent
+import json
 
 class ShowStuWidget(QtWidgets.QWidget):
+    #Initialize ========================================================
     def __init__(self, client):
         super().__init__()
         self.setObjectName("show_stu_widget")
         self.client = client
-
         layout = QtWidgets.QVBoxLayout()
-
-        header_label = LabelComponent(18, "Show Student")
-        layout.addWidget(header_label, stretch=1)
-
-        # 創建滾動區域
+        header_label = LabelComponent(20, "Show Student")
+        header_label.setStyleSheet("color:darkblue; font-weight: bold;")
+        self.content_label = LabelComponent(16,"")
         self.scroll_area = QtWidgets.QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.scroll_area.setWidget(self.content_label)
 
-        # 為滾動區域創建一個 widget
-        self.scroll_widget = QtWidgets.QWidget()
-        self.scroll_area.setWidget(self.scroll_widget)
-
-        # 為滾動 widget 創建佈局
-        self.scroll_layout = QtWidgets.QVBoxLayout(self.scroll_widget)
-
+    #Placement for all component ================================================  
+        layout.addWidget(header_label, stretch=1)
         layout.addWidget(self.scroll_area, stretch=9)
         self.setLayout(layout)
     
+    #Component effect and function================================================
     def load(self):
-        pass
+        self.client.send_command("show", {})
+        data = self.client.wait_response()
+        data = json.loads(data)
+        if data.get('status') == 'OK': 
+            text = "<pre>========== Student List ==========\n</pre>"       
+            for key, value in data['parameters'].items():
+                text += "<pre>Name:{}</pre>".format(value['name'])
+                for subject, score in value['scores'].items():
+                    if score < 60:
+                        text += "<pre>  Subject:{}, Score:<span style='color: red;'>{}</span></pre>\n".format(subject, score)
+                    else:
+                        text += "<pre>  Subject:{}, Score:{}</pre>\n".format(subject, score)
+            self.content_label.setStyleSheet("font-family: Microsoft JhengHei; font-weight:bold;")           
+            self.content_label.setText(text)
 
-    def display_students(self, reply_msg_dict):
-        # 清除現有的數據
-        for i in reversed(range(self.scroll_layout.count())): 
-            widget = self.scroll_layout.itemAt(i).widget()
-            if widget is not None: 
-                widget.deleteLater()
 
-        # 添加新學生數據，設置特定的字體大小
-        title_label = QtWidgets.QLabel("====student list====")
-        title_label.setStyleSheet("font-size: 20px;")
-        self.scroll_layout.addWidget(title_label)
+  
+ 
+     
+        
 
-        for name, info in reply_msg_dict['parameters'].items():
-            student_label = QtWidgets.QLabel(f"Name: {name}")
-            student_label.setStyleSheet("font-size: 20px;")
-            self.scroll_layout.addWidget(student_label)
-            
-            for subject, score in info['scores'].items():
-                subject_label = QtWidgets.QLabel(f"    Subject: {subject}, Score: {score}")
-                subject_label.setStyleSheet("font-size: 18px;")
-                self.scroll_layout.addWidget(subject_label)
 
-            # 添加一個空行以分隔不同學生的信息
-            next_raw = QtWidgets.QLabel("\n")
-            self.scroll_layout.addWidget(next_raw)
+
+    
